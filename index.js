@@ -3,11 +3,10 @@
 import Color from 'art/core/color';
 import Path from './lib/SerializablePath';
 import Transform from 'art/core/transform';
-
 import React from 'react';
 
 import ReactNativeViewAttributes from 'react-native/Libraries/Components/View/ReactNativeViewAttributes';
-import createReactNativeComponentClass from 'react-native/Libraries/Renderer/src/renderers/native/createReactNativeComponentClass';
+import createReactNativeComponentClass from 'react-native/Libraries/Renderer/shims/createReactNativeComponentClass';
 
 import merge from 'merge';
 
@@ -66,7 +65,7 @@ var NodeAttributes = {
 };
 
 var GroupAttributes = merge(NodeAttributes, {
-  clipping: { diff: arrayDiffer }
+  clipping: { diff: arrayDiffer },
 });
 
 var RenderableAttributes = merge(NodeAttributes, {
@@ -85,30 +84,30 @@ var ShapeAttributes = merge(RenderableAttributes, {
 var TextAttributes = merge(RenderableAttributes, {
   alignment: true,
   frame: { diff: fontAndLinesDiffer },
-  path: { diff: arrayDiffer }
+  path: { diff: arrayDiffer },
 });
 
 // Native Components
 
-var NativeSurfaceView = createReactNativeComponentClass({
+var NativeSurfaceView = createReactNativeComponentClass('NVGSurfaceView', () => ({
   validAttributes: SurfaceViewAttributes,
   uiViewClassName: 'NVGSurfaceView',
-});
+}));
 
-var NativeGroup = createReactNativeComponentClass({
+var NativeGroup = createReactNativeComponentClass('NVGGroup', () => ({
   validAttributes: GroupAttributes,
   uiViewClassName: 'NVGGroup',
-});
+}));
 
-var NativeShape = createReactNativeComponentClass({
+var NativeShape = createReactNativeComponentClass('NVGShape', () => ({
   validAttributes: ShapeAttributes,
   uiViewClassName: 'NVGShape',
-});
+}));
 
-var NativeText = createReactNativeComponentClass({
+var NativeText = createReactNativeComponentClass('NVGText', () => ({
   validAttributes: TextAttributes,
   uiViewClassName: 'NVGText',
-});
+}));
 
 // Utilities
 
@@ -133,7 +132,10 @@ class Surface extends React.Component {
     var w = extractNumber(props.width, 0);
     var h = extractNumber(props.height, 0);
     return (
-      <NativeSurfaceView dontSmooth={props.dontSmooth} style={[props.style, { width: w, height: h }]}>
+      <NativeSurfaceView
+        dontSmooth={props.dontSmooth}
+        style={[props.style, { width: w, height: h }]}
+      >
         {this.props.children}
       </NativeSurfaceView>
     );
@@ -155,10 +157,8 @@ function extractNumber(value, defaultValue) {
 var pooledTransform = new Transform();
 
 function extractTransform(props) {
-  var scaleX = props.scaleX != null ? props.scaleX :
-               props.scale != null ? props.scale : 1;
-  var scaleY = props.scaleY != null ? props.scaleY :
-               props.scale != null ? props.scale : 1;
+  var scaleX = props.scaleX != null ? props.scaleX : props.scale != null ? props.scale : 1;
+  var scaleY = props.scaleY != null ? props.scaleY : props.scale != null ? props.scale : 1;
 
   pooledTransform
     .transformTo(1, 0, 0, 1, 0, 0)
@@ -171,9 +171,12 @@ function extractTransform(props) {
   }
 
   return [
-    pooledTransform.xx, pooledTransform.yx,
-    pooledTransform.xy, pooledTransform.yy,
-    pooledTransform.x,  pooledTransform.y,
+    pooledTransform.xx,
+    pooledTransform.yx,
+    pooledTransform.xy,
+    pooledTransform.yy,
+    pooledTransform.x,
+    pooledTransform.y,
   ];
 }
 
@@ -197,9 +200,7 @@ class Group extends React.Component {
   render() {
     var props = this.props;
     return (
-      <NativeGroup
-        opacity={extractOpacity(props)}
-        transform={extractTransform(props)}>
+      <NativeGroup opacity={extractOpacity(props)} transform={extractTransform(props)}>
         {this.props.children}
       </NativeGroup>
     );
@@ -222,7 +223,8 @@ class ClippingRectangle extends React.Component {
       <NativeGroup
         clipping={clipping}
         opacity={extractOpacity(props)}
-        transform={extractTransform(propsExcludingXAndY)}>
+        transform={extractTransform(propsExcludingXAndY)}
+      >
         {this.props.children}
       </NativeGroup>
     );
@@ -271,7 +273,7 @@ function insertOffsetsIntoArray(stops, targetArray, atIndex, multi, reverse) {
     }
   } else {
     for (var offsetString in stops) {
-      offsetNumber = (+offsetString) * multi;
+      offsetNumber = +offsetString * multi;
       targetArray[atIndex + i] = reverse ? 1 - offsetNumber : offsetNumber;
       i++;
     }
@@ -342,17 +344,23 @@ function extractColor(color) {
 
 function extractStrokeCap(strokeCap) {
   switch (strokeCap) {
-    case 'butt': return 0;
-    case 'square': return 2;
-    default: return 1; // round
+    case 'butt':
+      return 0;
+    case 'square':
+      return 2;
+    default:
+      return 1; // round
   }
 }
 
 function extractStrokeJoin(strokeJoin) {
   switch (strokeJoin) {
-    case 'miter': return 0;
-    case 'bevel': return 2;
-    default: return 1; // round
+    case 'miter':
+      return 0;
+    case 'bevel':
+      return 2;
+    default:
+      return 1; // round
   }
 }
 
@@ -374,7 +382,6 @@ class Shape extends React.Component {
         strokeJoin={extractStrokeJoin(props.strokeJoin)}
         strokeWidth={extractNumber(props.strokeWidth, 1)}
         transform={extractTransform(props)}
-
         d={props.d.toJSON()}
       />
     );
@@ -392,9 +399,10 @@ function extractSingleFontFamily(fontFamilyString) {
   // NVG on the web allows for multiple font-families to be specified.
   // For compatibility, we extract the first font-family, hoping
   // we'll get a match.
-  return fontFamilyString.split(',')[0]
-         .replace(fontFamilyPrefix, '')
-         .replace(fontFamilySuffix, '');
+  return fontFamilyString
+    .split(',')[0]
+    .replace(fontFamilyPrefix, '')
+    .replace(fontFamilySuffix, '');
 }
 
 function parseFontString(font) {
@@ -457,10 +465,7 @@ class Text extends React.Component {
   render() {
     var props = this.props;
     var textPath = props.path ? new Path(props.path).toJSON() : null;
-    var textFrame = extractFontAndLines(
-      props.font,
-      childrenAsString(props.children)
-    );
+    var textFrame = extractFontAndLines(props.font, childrenAsString(props.children));
     return (
       <NativeText
         fill={extractBrush(props.fill, props)}
@@ -471,7 +476,6 @@ class Text extends React.Component {
         strokeJoin={extractStrokeJoin(props.strokeJoin)}
         strokeWidth={extractNumber(props.strokeWidth, 1)}
         transform={extractTransform(props)}
-
         alignment={extractAlignment(props.alignment)}
         frame={textFrame}
         path={textPath}
@@ -486,13 +490,14 @@ function LinearGradient(stops, x1, y1, x2, y2) {
   var type = LINEAR_GRADIENT;
 
   if (arguments.length < 5) {
-    var angle = ((x1 == null) ? 270 : x1) * Math.PI / 180;
+    var angle = (x1 == null ? 270 : x1) * Math.PI / 180;
 
     var x = Math.cos(angle);
     var y = -Math.sin(angle);
     var l = (Math.abs(x) + Math.abs(y)) / 2;
 
-    x *= l; y *= l;
+    x *= l;
+    y *= l;
 
     x1 = 0.5 - x;
     x2 = 0.5 + x;
